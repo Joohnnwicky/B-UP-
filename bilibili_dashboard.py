@@ -833,6 +833,17 @@ class BilibiliDashboard:
                     user = item.get("user", {})
                     item_data = item.get("item", {})
 
+                    # 从多个可能的位置获取uri和bvid
+                    uri = item.get("uri") or item_data.get("uri") or ""
+                    bvid = item.get("bvid") or item_data.get("bvid") or ""
+
+                    # 尝试从nested结构获取
+                    nested = item_data.get("nested", {})
+                    if not uri and nested.get("uri"):
+                        uri = nested.get("uri")
+                    if not bvid and nested.get("bvid"):
+                        bvid = nested.get("bvid")
+
                     msg = {
                         "id": item.get("id"),
                         "type": item.get("type"),
@@ -841,8 +852,8 @@ class BilibiliDashboard:
                         "content": item_data.get("source_content", "")[:80],
                         "reply_content": item_data.get("target_reply_content", "")[:80],
                         "title": item_data.get("title", ""),
-                        "uri": item_data.get("uri", ""),
-                        "bvid": item.get("bvid", ""),
+                        "uri": uri,
+                        "bvid": bvid,
                         "timestamp": item.get("reply_time"),
                     }
                     messages.append(msg)
@@ -983,22 +994,50 @@ class BilibiliDashboard:
 
         # 点击跳转到B站回复消息页面
         def open_link(event, msg_data=msg):
-            # 优先使用API返回的uri（直接跳转到具体评论）
+            opened = False
+
+            # 方法1: 使用API返回的uri
             if msg_data.get("uri"):
                 url = msg_data["uri"]
-                if not url.startswith("http"):
+                if url.startswith("//"):
                     url = "https:" + url
-                webbrowser.open(url)
-            elif msg_data.get("bvid"):
-                # 如果没有uri，跳转到视频页面
+                elif not url.startswith("http"):
+                    url = "https:" + url
+                try:
+                    webbrowser.open(url)
+                    opened = True
+                except Exception:
+                    pass
+
+            # 方法2: 使用bvid跳转到视频
+            if not opened and msg_data.get("bvid"):
                 url = f"https://www.bilibili.com/video/{msg_data['bvid']}"
-                webbrowser.open(url)
-            else:
-                # 最后跳转到消息中心回复页面
-                webbrowser.open("https://message.bilibili.com/#/reply")
+                try:
+                    webbrowser.open(url)
+                    opened = True
+                except Exception:
+                    pass
+
+            # 方法3: 跳转到消息中心回复页面
+            if not opened:
+                try:
+                    webbrowser.open("https://message.bilibili.com/#/reply")
+                except Exception:
+                    pass
 
         card.bind("<Button-1>", open_link)
         card_outer.bind("<Button-1>", open_link)
+
+        # 为卡片内所有子组件绑定点击事件
+        def bind_click_recursive(widget):
+            try:
+                widget.bind("<Button-1>", open_link)
+            except:
+                pass
+            for child in widget.winfo_children():
+                bind_click_recursive(child)
+
+        bind_click_recursive(card)
 
         # 悬停效果
         def on_enter(e):
