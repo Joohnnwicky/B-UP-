@@ -1,6 +1,7 @@
 # B站数据看板 - CYBERPUNK 2077 Edition
 
 B站UP主可以通过此面板监控粉丝订阅数量和留言，赛博朋克风格界面。
+![效果预览](./效果预览.png)
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
